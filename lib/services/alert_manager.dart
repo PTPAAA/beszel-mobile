@@ -21,11 +21,18 @@ class AlertManager {
     final List<String>? alertsJson = prefs.getStringList('local_alerts');
 
     if (alertsJson != null) {
-      _alerts = alertsJson
-          .map((str) => Alert.fromJson(jsonDecode(str)))
-          .toList();
-      // Sort specific if needed, but adding to top is better
-      _alerts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      // Decode with error handling and limit
+      final List<Alert> loaded = [];
+      // Assuming list is stored as [newest, ..., oldest]
+      for (final str in alertsJson) {
+        if (loaded.length >= 50) break; 
+        try {
+          loaded.add(Alert.fromJson(jsonDecode(str)));
+        } catch (_) {}
+      }
+      // Sort just in case, though insertion order should be preserved
+      loaded.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      _alerts = loaded; 
     }
   }
 
@@ -40,6 +47,9 @@ class AlertManager {
     );
 
     _alerts.insert(0, alert);
+    if (_alerts.length > 50) {
+      _alerts = _alerts.sublist(0, 50);
+    }
     await _saveAlerts();
   }
 

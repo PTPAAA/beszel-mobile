@@ -1,5 +1,7 @@
 import 'package:beszel_pro/models/system.dart';
 import 'dart:async';
+import 'dart:math' as math;
+import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 import 'package:beszel_pro/screens/system_detail_screen.dart';
 import 'package:beszel_pro/services/pocketbase_service.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +15,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:beszel_pro/services/notification_service.dart';
 import 'package:beszel_pro/services/alert_manager.dart';
 import 'package:beszel_pro/screens/alerts_screen.dart';
+import 'package:beszel_pro/screens/user_info_screen.dart';
+import 'package:beszel_pro/services/pin_service.dart';
 
 enum SortOption { name, cpu, ram, disk }
 
@@ -31,36 +35,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Timer? _pollingTimer;
 
   void _sortSystems() {
-    setState(() {
-      switch (_currentSort) {
-        case SortOption.name:
-          _systems.sort((a, b) => a.name.compareTo(b.name));
-          break;
-        case SortOption.cpu:
-          // Descending for metrics usually makes more sense
-          _systems.sort((a, b) => b.cpuPercent.compareTo(a.cpuPercent));
-          break;
-        case SortOption.ram:
-          _systems.sort((a, b) => b.memoryPercent.compareTo(a.memoryPercent));
-          break;
-        case SortOption.disk:
-          _systems.sort((a, b) => b.diskPercent.compareTo(a.diskPercent));
-          break;
-      }
-    });
+    switch (_currentSort) {
+      case SortOption.name:
+        _systems.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case SortOption.cpu:
+        // Descending for metrics usually makes more sense
+        _systems.sort((a, b) => b.cpuPercent.compareTo(a.cpuPercent));
+        break;
+      case SortOption.ram:
+        _systems.sort((a, b) => b.memoryPercent.compareTo(a.memoryPercent));
+        break;
+      case SortOption.disk:
+        _systems.sort((a, b) => b.diskPercent.compareTo(a.diskPercent));
+        break;
+    }
   }
 
   @override
   void initState() {
     super.initState();
-    NotificationService().initialize();
-    AlertManager().loadAlerts();
-    _fetchSystems();
-    _subscribeToRealtime();
+    debugPrint('Dashboard: initState');
     
-    // Polling fallback: every 5 seconds
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      _pollSystems();
+    // Defer heavy services until after the first frame rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint('Dashboard: PostFrameCallback - Starting Services');
+      NotificationService().initialize();
+      AlertManager().loadAlerts();
+      _fetchSystems();
+      _subscribeToRealtime();
+      
+      // Polling fallback: every 5 seconds
+      _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+        _pollSystems();
+      });
     });
   }
 
@@ -97,10 +105,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (newSystem.cpuPercent > 80 && oldSystem.cpuPercent <= 80) {
           _triggerAlert(newSystem, tr('alert_high_cpu_title'), tr('alert_high_cpu_body', args: [newSystem.name, newSystem.cpuPercent.toStringAsFixed(1)]), 'warning');
       }
-      // 3. Check for High Disk (80%)
+      // 3. Check for High RAM (80%)
+      if (newSystem.memoryPercent > 80 && oldSystem.memoryPercent <= 80) {
+          _triggerAlert(newSystem, tr('alert_high_ram_title'), tr('alert_high_ram_body', args: [newSystem.name, newSystem.memoryPercent.toStringAsFixed(1)]), 'warning');
+      }
+      // 4. Check for High Disk (80%)
       if (newSystem.diskPercent > 80 && oldSystem.diskPercent <= 80) {
           _triggerAlert(newSystem, tr('alert_high_disk_title'), tr('alert_high_disk_body', args: [newSystem.name, newSystem.diskPercent.toStringAsFixed(1)]), 'warning');
       }
+  }
+
+  void _checkInitialAlerts() {
+    for (final system in _systems) {
+      // 1. Check for DOWN status
+      if (system.status == 'down') {
+         _triggerAlert(system, tr('alert_system_down_title'), tr('alert_system_down_body', args: [system.name]), 'error');
+      }
+      // 2. Check for High CPU (80%)
+      if (system.cpuPercent > 80) {
+          _triggerAlert(system, tr('alert_high_cpu_title'), tr('alert_high_cpu_body', args: [system.name, system.cpuPercent.toStringAsFixed(1)]), 'warning');
+      }
+      // 3. Check for High RAM (80%)
+      if (system.memoryPercent > 80) {
+          _triggerAlert(system, tr('alert_high_ram_title'), tr('alert_high_ram_body', args: [system.name, system.memoryPercent.toStringAsFixed(1)]), 'warning');
+      }
+      // 4. Check for High Disk (80%)
+      if (system.diskPercent > 80) {
+          _triggerAlert(system, tr('alert_high_disk_title'), tr('alert_high_disk_body', args: [system.name, system.diskPercent.toStringAsFixed(1)]), 'warning');
+      }
+    }
   }
 
   @override
@@ -125,6 +158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           _systems = records.map((r) => System.fromRecord(r)).toList();
           _sortSystems();
+          _checkInitialAlerts();
           _isLoading = false;
         });
       }
@@ -203,6 +237,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('pb_url');
+    await PinService().removePin();
 
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
@@ -264,62 +299,121 @@ class _DashboardScreenState extends State<DashboardScreen> {
                            Navigator.pop(context);
                          },
                        ),
+                       ListTile(
+                         leading: const Icon(Icons.donut_large),
+                         title: Text(tr('disk')), // reused translation or key 'disk'
+                         trailing: _currentSort == SortOption.disk ? const Icon(Icons.check) : null,
+                         onTap: () {
+                           setState(() {
+                             _currentSort = SortOption.disk;
+                             _sortSystems();
+                           });
+                           Navigator.pop(context);
+                         },
+                       ),
                     ],
                   );
                 },
                );
             }
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AlertsScreen()),
-              );
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.account_circle),
+            tooltip: 'User Menu',
+            onSelected: (String value) {
+              switch (value) {
+                case 'user':
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const UserInfoScreen()),
+                  );
+                  break;
+                case 'theme':
+                  final provider = Provider.of<AppProvider>(context, listen: false);
+                  provider.toggleTheme(provider.themeMode != ThemeMode.dark);
+                  break;
+                case 'language':
+                  // Show language selector
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SimpleDialog(
+                        title: const Text('Select Language'),
+                        children: [
+                          SimpleDialogOption(
+                            onPressed: () {
+                              context.setLocale(const Locale('en'));
+                              Navigator.pop(context);
+                            },
+                            child: const Text('🇺🇸 English'),
+                          ),
+                          SimpleDialogOption(
+                            onPressed: () {
+                              context.setLocale(const Locale('ru'));
+                              Navigator.pop(context);
+                            },
+                            child: const Text('🇷🇺 Русский'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                  break;
+                case 'logout':
+                  _logout();
+                  break;
+                case 'alerts':
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AlertsScreen()),
+                  );
+                  break;
+              }
             },
-            tooltip: 'Alerts',
-          ),
-          PopupMenuButton<Locale>(
-            icon: const Icon(Icons.language),
-            tooltip: 'Select Language',
-            onSelected: (Locale locale) {
-              context.setLocale(locale);
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<Locale>>[
-              const PopupMenuItem<Locale>(
-                value: Locale('en'),
-                child: Row(
-                  children: [
-                    Text('🇺🇸 English'),
-                  ],
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'user',
+                child: ListTile(
+                  leading: Icon(Icons.person),
+                  title: Text('User'),
+                  contentPadding: EdgeInsets.zero,
                 ),
               ),
-              const PopupMenuItem<Locale>(
-                value: Locale('ru'),
-                child: Row(
-                  children: [
-                    Text('🇷🇺 Русский'),
-                  ],
+              const PopupMenuItem<String>(
+                value: 'alerts',
+                child: ListTile(
+                  leading: Icon(Icons.notifications),
+                  title: Text('Alerts'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'theme',
+                child: ListTile(
+                  leading: Icon(
+                    Provider.of<AppProvider>(context, listen: false).themeMode == ThemeMode.dark
+                        ? Icons.light_mode
+                        : Icons.dark_mode,
+                  ),
+                  title: const Text('Theme'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'language',
+                child: ListTile(
+                  leading: Icon(Icons.language),
+                  title: Text('Language'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'logout',
+                child: ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: Text(tr('logout')),
+                  contentPadding: EdgeInsets.zero,
                 ),
               ),
             ],
-          ),
-          IconButton(
-            icon: Icon(
-              Provider.of<AppProvider>(context).themeMode == ThemeMode.dark
-                  ? Icons.light_mode
-                  : Icons.dark_mode,
-            ),
-            onPressed: () {
-              final provider = Provider.of<AppProvider>(context, listen: false);
-              provider.toggleTheme(
-                  provider.themeMode != ThemeMode.dark); 
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: tr('logout'),
           ),
         ],
       ),
@@ -327,13 +421,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(8.0),
-                  itemCount: _systems.length,
-                  itemBuilder: (context, index) {
-                    final system = _systems[index];
-                    return _SystemCard(system: system);
+              : CustomRefreshIndicator(
+                  onRefresh: _fetchSystems,
+                  builder: (context, child, controller) {
+                    return Stack(
+                      children: [
+
+                         // For continuous spin during 'loading' state, we might need a separate animation or rely on the controller behavior if configured.
+                         // Simple approach: Use logic to spin based on controller.
+                         // Better: Use a dedicated SpinningWidget if controller.isLoading.
+                         // For now, simple rotation based on pull is good for "pulling". 
+                         // For "refreshing", we want it to spin.
+                          Positioned(
+                            top: 35.0 * controller.value, // Icon vertical pos
+                            left: 0,
+                            right: 0,
+                             child: controller.isLoading
+                                ?  const _SpinningIcon()
+                                : AnimatedBuilder(
+                                  animation: controller,
+                                  builder: (context, _) => Transform.rotate(
+                                    angle: controller.value * 2 * math.pi,
+                                    child: Opacity(
+                                      opacity: controller.value.clamp(0.0, 1.0),
+                                      child: Image.asset('assets/icon.png', height: 30, width: 30)
+                                    )
+                                  ),
+                                ),
+                          ),
+                        Transform.translate(
+                          offset: Offset(0, 100.0 * controller.value),
+                          child: child,
+                        ),
+                      ],
+                    );
                   },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8.0),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: _systems.length,
+                    itemBuilder: (context, index) {
+                      final system = _systems[index];
+                      return _SystemCard(system: system);
+                    },
+                  ),
                 ),
     );
   }
@@ -427,6 +558,40 @@ class _SystemCard extends StatelessWidget {
         ),
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
+    );
+  }
+}
+
+class _SpinningIcon extends StatefulWidget {
+  const _SpinningIcon({super.key});
+
+  @override
+  State<_SpinningIcon> createState() => _SpinningIconState();
+}
+
+class _SpinningIconState extends State<_SpinningIcon> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => Transform.rotate(
+        angle: _controller.value * 2 * math.pi,
+        child: Image.asset('assets/icon.png', height: 30, width: 30),
+      ),
     );
   }
 }

@@ -7,6 +7,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:beszel_pro/services/pin_service.dart';
+import 'package:beszel_pro/screens/pin_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,10 +80,12 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkSession() async {
     // Artificial delay for splash effect
     await Future.delayed(const Duration(seconds: 1));
+    debugPrint('Splash: Checking session...');
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final url = prefs.getString('pb_url');
+      debugPrint('Splash: URL from prefs: $url');
 
       if (url == null || url.isEmpty) {
         _navigate(const SetupScreen());
@@ -88,16 +93,36 @@ class _SplashScreenState extends State<SplashScreen> {
       }
 
       // Initialize PocketBase
+      debugPrint('Splash: Connecting to PocketBase...');
       await PocketBaseService().connect(url);
       
       // Check Auth Status
       if (PocketBaseService().pb.authStore.isValid) {
-         _navigate(const DashboardScreen());
+         final isPinSet = await PinService().isPinSet();
+         if (isPinSet) {
+           if (mounted) {
+             Navigator.of(context).pushReplacement(
+               MaterialPageRoute(
+                 builder: (_) => PinScreen(
+                   isSetup: false,
+                   onSuccess: (ctx) {
+                     Navigator.of(ctx).pushReplacement(
+                       MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                     );
+                   },
+                 ),
+               ),
+             );
+           }
+         } else {
+           _navigate(const DashboardScreen());
+         }
       } else {
          _navigate(const LoginScreen());
       }
 
     } catch (e) {
+      debugPrint('Splash: Error: $e');
       // If error (e.g. malformed URL in prefs), go to Setup
       _navigate(const SetupScreen());
     }

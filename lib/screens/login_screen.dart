@@ -2,6 +2,8 @@ import 'package:beszel_pro/screens/dashboard_screen.dart';
 import 'package:beszel_pro/services/pocketbase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:pocketbase/pocketbase.dart';
+import 'package:beszel_pro/services/pin_service.dart';
+import 'package:beszel_pro/screens/pin_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,11 +26,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final pb = PocketBaseService().pb;
-      // Using 'users' collection as requested, though sometimes it might be '_superuser' or 'admins' in PocketBase.
-      // But user requested 'users' or implicit auth. Beszel usually writes to 'users'.
-      // However, PocketBase has separate 'users' and 'admins'.
-      // If Beszel uses standard PocketBase auth, it's likely 'users'.
-      // Let's try 'users' first as requested.
       
       await pb.collection('users').authWithPassword(
         _emailController.text.trim(),
@@ -36,14 +33,34 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
+        // Check if PIN is set
+        final isPinSet = await PinService().isPinSet();
+        
+        if (!mounted) return;
+
+        if (!isPinSet) {
+           // Navigate to PIN setup
+           Navigator.of(context).pushReplacement(
+             MaterialPageRoute(
+               builder: (_) => PinScreen(
+                 isSetup: true,
+                 onSuccess: (ctx) {
+                   Navigator.of(ctx).pushReplacement(
+                     MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                   );
+                 },
+               ),
+             ),
+           );
+        } else {
+           Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          // Improve error parsing if needed (ClientException)
           _error = 'Login failed. Please check your credentials.'; 
           if (e is ClientException) {
              _error = e.response['message']?.toString() ?? e.toString();

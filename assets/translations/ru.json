@@ -29,6 +29,8 @@
     "alert_high_cpu_body": "ЦП {} загружен на {}%",
     "alert_high_disk_title": "Мало места на диске",
     "alert_high_disk_body": "Диск {} заполнен на {}%",
+    "alert_high_ram_title": "Высокая нагрузка ОЗУ",
+    "alert_high_ram_body": "ОЗУ {} загружено на {}%",
     "sort_name": "Имя",
     "sort_cpu": "Загрузка ЦП",
     "sort_ram": "Загрузка ОЗУ"

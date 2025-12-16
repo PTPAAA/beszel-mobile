@@ -11,26 +11,40 @@ Beszel Mobile brings your server metrics to your pocket. Connect to your existin
 
 ---
 
+## What's New
+- **🔐 PIN Security**: Secure your app with a 4-digit PIN code. Supports Setup, Verification, and automatic cleanup on logout.
+- **🔄 Custom Pull-to-Refresh**: Smooth, animated dashboard refreshing with a custom spinning icon.
+- **⚡ Enhanced Alerts**: 
+    - **Uniform 80% Threshold**: Immediate alerts if CPU, RAM, or Disk usage exceeds 80%.
+    - **Startup Checks**: Instantly checks system health upon app launch—no more waiting for changes to trigger alerts.
+    - **Safe-Start**: Optimized initialization ensures the app launches instantly, even with heavy data loads.
+
+---
+
 ## Features
 
-- **Real-Time Dashboard**
-  - Live updates of all your connected systems.
-  - At-a-glance status indicators (UP/DOWN).
-  - Current CPU, Memory, and Disk usage percentages.
+### 📊 Real-Time Dashboard
+- Live updates of all your connected systems.
+- **Status Indicators**: Instant visual feedback on system health (Green/Red).
+- **Sorting**: Sort systems by Name, CPU, RAM, or Disk usage.
+- **Pull-to-Refresh**: Manually refresh data with a fluid, custom animation.
 
-- **Detailed Analytics**
-  - Interactive historical charts for **CPU**, **Memory**, **Disk**, and **Network Traffic**.
-  - Precise tooltip data on touch.
-  - Dynamic X-axis (Time) and Y-axis (Usage/Bandwidth) scaling.
+### 📈 Detailed Analytics
+- **Interactive Charts**: History for **CPU**, **Memory**, **Disk**, and **Network Traffic**.
+- **Precision Data**: Touch anywhere on the chart for exact metrics.
+- **Dynamic Scaling**: Charts adapt automatically to your data range.
 
-- **Smart Alerts System**
-  - **Local Push Notifications**: Get notified instantly on your device if a server goes down or resource usage spikes (>90%).
-  - **Alert History**: Persistent log of all past critical events.
-  - **Background Monitoring**: (Active when app is running).
+### 🔔 Smart Alerts System
+- **Immediate Notifications**: Get notified instantly on your device if:
+    - A server goes **DOWN**.
+    - **CPU**, **RAM**, or **Disk** usage exceeds **80%**.
+- **Startup Protection**: Detects overloaded servers immediately when you open the app.
+- **Alert History**: Persistent log of all past critical events (capped for performance).
 
-- **Localization & Theming**
-  - **Multi-language Support**: Fully localized in **English** 🇺🇸 and **Russian** 🇷🇺.
-  - **Dark/Light Mode**: Seamlessly switches based on your system preference or manual toggle.
+### 🌍 Localization & Customization
+- **Multi-language**: Fully localized in **English** 🇺🇸 and **Russian** 🇷🇺.
+- **Theme Support**: Beautiful **Dark** and **Light** modes.
+- **User Profiles**: View your account details with a dedicated User Info screen.
 
 ---
 
@@ -56,14 +70,16 @@ Beszel Mobile brings your server metrics to your pocket. Connect to your existin
     ```bash
     # For Android
     flutter run -d android
+    ```
+
 ---
 
 ## Configuration
 
 1.  **Open the App**: You will be greeted by the Setup Screen.
 2.  **Enter Server URL**: Input the full URL of your Beszel instance (e.g., `https://beszel.yourdomain.com`).
-3.  **Login**: Use your existing Beszel credentials (Email/Username & Password).
-4.  **Enjoy**: Your dashboard will automatically populate with your systems.
+3.  **Login**: Use your existing Beszel credentials.
+4.  **Set PIN (Optional)**: Secure your session with a PIN code in the User Menu.
 
 ---
 
@@ -71,11 +87,12 @@ Beszel Mobile brings your server metrics to your pocket. Connect to your existin
 
 - **Framework**: [Flutter](https://flutter.dev/)
 - **Backend SDK**: `pocketbase` (Dart client)
-- **Charting**: `fl_chart`
+- **Charts**: `fl_chart`
 - **State Management**: `provider`
 - **Localization**: `easy_localization`
-- **Charts**: `fl_chart`
 - **Notifications**: `flutter_local_notifications`
+- **Styling**: Custom `custom_refresh_indicator`
+- **Storage**: `shared_preferences`
 
 ---
 
@@ -88,4 +105,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4.  Push to the Branch (`git push origin feature/AmazingFeature`)
 5.  Open a Pull Request
-
