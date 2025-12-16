@@ -15,6 +15,7 @@ import 'package:beszel_pro/services/alert_manager.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
 
   runApp(
     EasyLocalization(
@@ -23,7 +24,7 @@ void main() async {
       fallbackLocale: const Locale('en'),
       child: MultiProvider(
         providers: [
-          ChangeNotifierProvider(create: (_) => AppProvider()),
+          ChangeNotifierProvider(create: (_) => AppProvider(prefs)),
           ChangeNotifierProvider(create: (_) => AlertManager()),
         ],
         child: const MyApp(),

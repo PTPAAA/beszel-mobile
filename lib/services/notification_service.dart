@@ -48,12 +48,13 @@ class NotificationService {
   }) async {
     const AndroidNotificationDetails androidNotificationDetails =
         AndroidNotificationDetails(
-      'beszel_alerts', // channelId
+      'beszel_alerts_v2', // channelId
       'Beszel Alerts', // channelName
       channelDescription: 'Notifications for system alerts',
       importance: Importance.max,
       priority: Priority.high,
       ticker: 'ticker',
+      sound: RawResourceAndroidNotificationSound('alert'),
     );
 
     const NotificationDetails notificationDetails =
