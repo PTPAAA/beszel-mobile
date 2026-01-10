@@ -1,11 +1,10 @@
-import 'package:beszel_pro/screens/dashboard_screen.dart';
 import 'package:beszel_pro/services/pocketbase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:beszel_pro/services/pin_service.dart';
 import 'package:easy_localization/easy_localization.dart';
 
-import 'package:beszel_pro/screens/pin_decision_screen.dart';
+import 'package:beszel_pro/screens/appearance_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -43,16 +42,24 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
 
         if (!isPinSet) {
-          // Navigate to PIN decision
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const PinDecisionScreen()),
-            (route) => false,
-          );
+          // New flow: Login -> Appearance -> PinDecision
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const AppearanceScreen()));
         } else {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const DashboardScreen()),
-            (route) => false,
-          );
+          // Even if PIN is set, verify/show appearance?
+          // Assuming first login on device means setup needed?
+          // Or just skip for existing?
+          // User wants "initialization".
+          // If checking isPinSet here, it implies it's checking the ACCOUNT's pin status or DEVICE's?
+          // PinService uses SharedPreferences, so it is DEVICE specific.
+          // If local pin is set, user has used app before on this device.
+          // So skipping appearance is fine.
+          // BUT if user WANTS to see it?
+          // Let's force it for newly logged in users (since they land on this screen).
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const AppearanceScreen()));
         }
       }
     } catch (e) {

@@ -50,5 +50,14 @@
     "pin_removed": "PIN-код удален",
     "menu_user": "Пользователь",
     "menu_theme": "Тема",
-    "menu_language": "Язык"
+    "menu_language": "Язык",
+    "appearance": "Внешний вид",
+    "choose_view_mode": "Выберите вид",
+    "view_simple": "Простой",
+    "view_detailed": "Подробный",
+    "continue": "Продолжить",
+    "load": "Загрузка",
+    "network": "Сеть",
+    "services": "Сервисы",
+    "traffic": "Трафик"
 }

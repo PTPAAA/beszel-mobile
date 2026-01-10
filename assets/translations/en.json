@@ -51,5 +51,14 @@
   "pin_removed": "PIN removed successfully",
   "menu_user": "User",
   "menu_theme": "Theme",
-  "menu_language": "Language"
+  "menu_language": "Language",
+  "appearance": "Appearance",
+  "choose_view_mode": "Choose View Mode",
+  "view_simple": "Simple",
+  "view_detailed": "Detailed",
+  "continue": "Continue",
+  "load": "Load",
+  "network": "Network",
+  "services": "Services",
+  "traffic": "Total Traffic"
 }

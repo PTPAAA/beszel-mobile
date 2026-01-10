@@ -13,6 +13,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:beszel_pro/services/notification_service.dart';
 import 'package:beszel_pro/services/alert_manager.dart';
 import 'package:beszel_pro/screens/alerts_screen.dart';
+import 'package:beszel_pro/screens/appearance_screen.dart';
 import 'package:beszel_pro/screens/user_info_screen.dart';
 import 'package:beszel_pro/services/pin_service.dart';
 
@@ -503,6 +504,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                   );
                   break;
+                case 'appearance':
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AppearanceScreen()),
+                  );
+                  break;
                 case 'logout':
                   _logout();
                   break;
@@ -530,6 +536,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         : Icons.dark_mode,
                   ),
                   title: Text('menu_theme'.tr()),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'appearance',
+                child: ListTile(
+                  leading: const Icon(Icons.view_quilt),
+                  title: Text('appearance'.tr()),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -569,7 +583,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 itemCount: _systems.length,
                 itemBuilder: (context, index) {
                   final system = _systems[index];
-                  return _SystemCard(system: system);
+                  final isDetailed = Provider.of<AppProvider>(
+                    context,
+                  ).isDetailed;
+                  return _SystemCard(system: system, isDetailed: isDetailed);
                 },
               ),
             ),
@@ -579,8 +596,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 class _SystemCard extends StatelessWidget {
   final System system;
+  final bool isDetailed;
 
-  const _SystemCard({required this.system});
+  const _SystemCard({required this.system, this.isDetailed = false});
+
+  String _formatBytes(double bytes) {
+    if (bytes <= 0) return '0 B';
+    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    var i = 0;
+    while (bytes >= 1024 && i < suffixes.length - 1) {
+      bytes /= 1024;
+      i++;
+    }
+    return '${bytes.toStringAsFixed(2)} ${suffixes[i]}';
+  }
 
   Color _getStatusColor(double usage) {
     if (usage < 50) return Colors.green;
@@ -598,6 +627,64 @@ class _SystemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isDetailed) return _buildDetailedCard(context);
+    return _buildSimpleCard(context);
+  }
+
+  Widget _buildDetailedCard(BuildContext context) {
+    // Keys identified from user debug:
+    // la: Load Average [1m, 5m, 15m]
+    // sv: Services [running, failed] -> e.g. [43, 0]
+    // b:  Bandwidth (Net I/O) in bytes/s
+    // bb: Total Bytes
+
+    String load = '0.00 0.00 0.00';
+    String network = '0 B/s';
+    String services = '0';
+    String totalTraffic = '0 B';
+
+    try {
+      // Load Average
+      if (system.info['la'] != null) {
+        final l = system.info['la'];
+        if (l is List) {
+          load = l.join(' ');
+        } else {
+          load = l.toString();
+        }
+      }
+
+      // Bandwidth (Net)
+      if (system.info['b'] != null) {
+        final b = system.info['b'];
+        if (b is num) {
+          network = _formatBytes(b.toDouble()) + '/s';
+        } else {
+          network = b.toString();
+        }
+      }
+
+      // Services
+      if (system.info['sv'] != null) {
+        final sv = system.info['sv'];
+        if (sv is List && sv.length >= 1) {
+          final total = sv[0];
+          final failed = sv.length > 1 ? sv[1] : 0;
+          services = '$total (Fail: $failed)';
+        } else {
+          services = sv.toString();
+        }
+      }
+
+      // Total Traffic (assuming 'bb' is Total Bytes)
+      if (system.info['bb'] != null) {
+        final bb = system.info['bb'];
+        if (bb is num) {
+          totalTraffic = _formatBytes(bb.toDouble());
+        }
+      }
+    } catch (_) {}
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
       elevation: 2,
@@ -614,45 +701,65 @@ class _SystemCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _getOsIcon(system.os),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      system.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: system.status == 'up'
-                          ? Colors.green.withOpacity(0.2)
-                          : Colors.red.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      system.status.toUpperCase(),
-                      style: TextStyle(
-                        color: system.status == 'up'
-                            ? Colors.green
-                            : Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
+              _buildHeader(detailed: true),
+              const SizedBox(height: 16),
+              _buildProgressBar(
+                context,
+                'CPU',
+                system.cpuPercent,
+                Icons.memory,
               ),
+              const SizedBox(height: 8),
+              _buildProgressBar(
+                context,
+                'RAM',
+                system.memoryPercent,
+                Icons.storage,
+              ),
+              const SizedBox(height: 8),
+              _buildProgressBar(
+                context,
+                'Disk',
+                system.diskPercent,
+                Icons.donut_large,
+              ),
+              const SizedBox(height: 12),
+              _buildInfoRow(Icons.speed, tr('load'), load),
+              const SizedBox(height: 4),
+              _buildInfoRow(Icons.network_check, tr('network'), network),
+              const SizedBox(height: 4),
+              _buildInfoRow(Icons.data_usage, tr('traffic'), totalTraffic),
+              const SizedBox(height: 4),
+              _buildInfoRow(
+                Icons.miscellaneous_services,
+                tr('services'),
+                services,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimpleCard(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      elevation: 2,
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => SystemDetailScreen(system: system),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(detailed: false),
               const SizedBox(height: 4),
               Text(
                 system.host,
@@ -671,6 +778,93 @@ class _SystemCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildHeader({required bool detailed}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _getOsIcon(system.os),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            system.name,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: system.status == 'up'
+                ? Colors.green.withOpacity(0.2)
+                : Colors.red.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            system.status.toUpperCase(),
+            style: TextStyle(
+              color: system.status == 'up' ? Colors.green : Colors.red,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgressBar(
+    BuildContext context,
+    String label,
+    double value,
+    IconData icon,
+  ) {
+    final color = _getStatusColor(value);
+    return Row(
+      children: [
+        SizedBox(
+          width: 80,
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: Colors.grey),
+              const SizedBox(width: 4),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: value / 100,
+              color: color,
+              backgroundColor: Colors.grey.withOpacity(0.2),
+              minHeight: 8,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 40,
+          child: Text(
+            '${value.toStringAsFixed(1)}%',
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey),
+        const SizedBox(width: 8),
+        Text('$label: ', style: const TextStyle(color: Colors.grey)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+      ],
     );
   }
 

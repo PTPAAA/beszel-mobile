@@ -51,5 +51,14 @@
     "pin_removed": "PIN 码已移除",
     "menu_user": "用户",
     "menu_theme": "主题",
-    "menu_language": "语言"
+    "menu_language": "语言",
+    "appearance": "外观设置",
+    "choose_view_mode": "选择显示模式",
+    "view_simple": "简约视图",
+    "view_detailed": "详细视图",
+    "continue": "继续",
+    "load": "负载",
+    "network": "网络",
+    "services": "服务",
+    "traffic": "总流量"
 }
