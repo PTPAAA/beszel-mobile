@@ -1,3 +1,0 @@
-files:
-  - source: /internal/site/src/locales/en/
-    translation: /internal/site/src/locales/%two_letters_code%/%two_letters_code%.po
