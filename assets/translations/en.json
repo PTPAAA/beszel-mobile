@@ -71,5 +71,14 @@
   "threads": "Threads",
   "seconds": "seconds",
   "utilization": "utilization",
-  "used": "Used"
+  "used": "Used",
+  "biometric_auth": "Biometric Authentication",
+  "biometric_description": "Use fingerprint or face to unlock",
+  "authenticate_fingerprint": "Authenticate to continue",
+  "create_pin": "Create PIN",
+  "enter_pin": "Enter PIN",
+  "confirm_pin": "Confirm PIN",
+  "pins_not_match": "PINs do not match. Try again.",
+  "incorrect_pin": "Incorrect PIN",
+  "biometric_auth_failed": "Biometric authentication failed or cancelled"
 }

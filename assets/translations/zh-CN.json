@@ -71,5 +71,14 @@
     "threads": "线程数",
     "seconds": "秒",
     "utilization": "利用率",
-    "used": "已用"
+    "used": "已用",
+    "biometric_auth": "生物识别认证",
+    "biometric_description": "使用指纹或面容解锁",
+    "authenticate_fingerprint": "验证身份以继续",
+    "create_pin": "创建 PIN 码",
+    "enter_pin": "输入 PIN 码",
+    "confirm_pin": "确认 PIN 码",
+    "pins_not_match": "PIN 码不匹配，请重试",
+    "incorrect_pin": "PIN 码错误",
+    "biometric_auth_failed": "生物识别认证失败或已取消"
 }

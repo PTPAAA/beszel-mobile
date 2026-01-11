@@ -41,6 +41,7 @@ dependencies:
   google_fonts: ^6.1.0
   flutter_svg: ^2.0.10
   easy_localization: ^3.0.3
+  local_auth: ^2.1.8
   custom_refresh_indicator: ^3.0.0
 
 dev_dependencies:

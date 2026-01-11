@@ -601,15 +601,20 @@ class _SystemDetailScreenState extends State<SystemDetailScreen> {
   }
 
   Widget _buildNetworkPanel() {
-    double netSent = _latestStats?['ns'] is num
-        ? (_latestStats!['ns'] as num).toDouble()
-        : 0;
-    double netRecv = _latestStats?['nr'] is num
-        ? (_latestStats!['nr'] as num).toDouble()
-        : 0;
-
-    // Network interfaces
+    // Network interfaces - contains [upDelta, downDelta, totalSent, totalRecv]
     Map<String, dynamic>? ni = _latestStats?['ni'];
+
+    // Calculate total network speed from all interfaces
+    double totalSent = 0;
+    double totalRecv = 0;
+    if (ni != null) {
+      ni.forEach((key, value) {
+        if (value is List && value.length >= 2) {
+          totalSent += (value[0] is num) ? (value[0] as num).toDouble() : 0;
+          totalRecv += (value[1] is num) ? (value[1] as num).toDouble() : 0;
+        }
+      });
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -625,7 +630,7 @@ class _SystemDetailScreenState extends State<SystemDetailScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '↑ ${_formatBytesSpeed(netSent)}  ↓ ${_formatBytesSpeed(netRecv)}',
+            '↑ ${_formatBytesSpeed(totalSent)}  ↓ ${_formatBytesSpeed(totalRecv)}',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 16),
@@ -639,8 +644,8 @@ class _SystemDetailScreenState extends State<SystemDetailScreen> {
           const SizedBox(height: 24),
 
           _buildStatsGrid([
-            _StatItem('Upload', _formatBytesSpeed(netSent)),
-            _StatItem('Download', _formatBytesSpeed(netRecv)),
+            _StatItem('Upload', _formatBytesSpeed(totalSent)),
+            _StatItem('Download', _formatBytesSpeed(totalRecv)),
           ]),
 
           // Network interfaces
