@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       build_type:
-        description: 'Build type (ipa or no-codesign)'
+        description: 'Build type'
         required: true
-        default: 'no-codesign'
+        default: 'app'
         type: choice
         options:
-          - no-codesign
+          - app
           - ipa
 
 jobs:
@@ -29,19 +29,32 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build iOS (no-codesign)
-        if: ${{ github.event.inputs.build_type == 'no-codesign' }}
+      - name: Build iOS App
+        if: ${{ github.event.inputs.build_type == 'app' }}
         run: flutter build ios --release --no-codesign
 
       - name: Build iOS IPA
         if: ${{ github.event.inputs.build_type == 'ipa' }}
         run: flutter build ipa --release --no-codesign
-        
-      - name: Upload iOS build artifacts
+
+      - name: Compress App Bundle
+        if: ${{ github.event.inputs.build_type == 'app' }}
+        run: |
+          cd build/ios/iphoneos
+          zip -r Runner.app.zip Runner.app
+
+      - name: Upload App Bundle
+        if: ${{ github.event.inputs.build_type == 'app' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build-${{ github.event.inputs.build_type }}
-          path: |
-            build/ios/iphoneos/Runner.app
-            build/ios/ipa/*.ipa
+          name: beszel-ios-app
+          path: build/ios/iphoneos/Runner.app.zip
+          retention-days: 7
+
+      - name: Upload IPA
+        if: ${{ github.event.inputs.build_type == 'ipa' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: beszel-ios-ipa
+          path: build/ios/ipa/*.ipa
           retention-days: 7
